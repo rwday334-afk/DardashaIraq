@@ -20,14 +20,23 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Make gradlew executable
-        run: chmod +x gradlew
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Extract Android project
+        run: |
+          ZIP_FILE=$(find . -maxdepth 1 -type f -name '*.zip' | head -n 1)
+          mkdir android-project
+          unzip -q "$ZIP_FILE" -d android-project
 
       - name: Build APK
-        run: ./gradlew assembleDebug
+        working-directory: android-project
+        run: gradle assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: Dardasha-Iraq-APK
-          path: '**/build/outputs/apk/**/*.apk'
+          path: android-project/app/build/outputs/apk/debug/*.apk
