@@ -20,23 +20,43 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.9'
-
       - name: Extract Android project
         run: |
-          ZIP_FILE=$(find . -maxdepth 1 -type f -name '*.zip' | head -n 1)
-          mkdir android-project
+          ZIP_FILE=$(find . -maxdepth 1 -type f -iname "*.zip" | head -1)
+
+          if [ -z "$ZIP_FILE" ]; then
+            echo "No ZIP file found"
+            exit 1
+          fi
+
+          echo "Found: $ZIP_FILE"
+          mkdir -p android-project
           unzip -q "$ZIP_FILE" -d android-project
 
+      - name: Find Gradle project
+        run: |
+          GRADLEW=$(find android-project -type f -name "gradlew" | head -1)
+
+          if [ -z "$GRADLEW" ]; then
+            echo "gradlew was not found inside the ZIP"
+            echo "Files inside archive:"
+            find android-project -maxdepth 4 -type f | head -100
+            exit 1
+          fi
+
+          PROJECT_DIR=$(dirname "$GRADLEW")
+
+          echo "Gradle wrapper found: $GRADLEW"
+          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+
+          chmod +x "$GRADLEW"
+
       - name: Build APK
-        working-directory: android-project
-        run: gradle assembleDebug
+        working-directory: ${{ env.PROJECT_DIR }}
+        run: ./gradlew assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: Dardasha-Iraq-APK
-          path: android-project/app/build/outputs/apk/debug/*.apk
+          path: 'android-project/**/build/outputs/apk/**/*.apk'
